@@ -1,0 +1,30 @@
+{
+  "name": "agent-device",
+  "version": "0.1.0",
+  "description": "CLI for controlling iOS simulators, physical iPhones, and more",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "agent-device": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsc --watch"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "express": "^5.1.0",
+    "ws": "^8.18.3",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.7.0"
+  }
+}

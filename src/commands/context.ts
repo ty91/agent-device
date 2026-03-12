@@ -1,5 +1,5 @@
 import type { Command } from 'commander'
-import * as registry from '../platform/registry.js'
+import { ensureDaemon, sendCommand } from '../daemon/client.js'
 import { output } from '../util/output.js'
 
 export function registerContextCommand(program: Command): void {
@@ -8,37 +8,20 @@ export function registerContextCommand(program: Command): void {
     .description('Discover available devices and determine execution context')
     .action(async () => {
       const opts = program.opts()
-      const ctx = await registry.detectContext()
+      await ensureDaemon()
+      const response = await sendCommand({ command: 'context', args: {} })
 
-      if (ctx.target === 'none') {
-        output({ target: 'none', message: 'No device or simulator found. Boot a simulator or connect a device.' }, opts)
+      if (!response.ok) {
+        process.stderr.write((response.error ?? 'Unknown error') + '\n')
+        process.exit(response.exitCode ?? 1)
+      }
+
+      const result = response.result as { target: string }
+      if (result.target === 'none') {
+        output(result, opts)
         process.exit(1)
       }
 
-      if (ctx.target === 'single') {
-        const device = ctx.devices[0]
-        let screenSize: { width: number; height: number } | null = null
-        try {
-          const provider = registry.getProvider(device.platform)
-          screenSize = await provider.getScreenSize(device.udid)
-        } catch { /* unavailable */ }
-
-        output({
-          target: device.connectionType === 'simulator' ? 'simulator' : 'device',
-          udid: device.udid,
-          name: device.name,
-          platform: device.platform,
-          model: device.model,
-          connection_type: device.connectionType,
-          screen_size: screenSize,
-        }, opts)
-        return
-      }
-
-      output({
-        target: 'ambiguous',
-        message: 'Multiple devices found. Specify --udid to target a specific device.',
-        devices: ctx.devices,
-      }, opts)
+      output(result, opts)
     })
 }

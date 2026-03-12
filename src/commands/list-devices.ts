@@ -1,6 +1,7 @@
 import type { Command } from 'commander'
-import * as registry from '../platform/registry.js'
+import { ensureDaemon, sendCommand } from '../daemon/client.js'
 import { output } from '../util/output.js'
+import type { DeviceInfo } from '../platform/types.js'
 
 export function registerListDevicesCommand(program: Command): void {
   program
@@ -8,7 +9,15 @@ export function registerListDevicesCommand(program: Command): void {
     .description('List all available devices and simulators')
     .action(async () => {
       const opts = program.opts()
-      const devices = await registry.listAllDevices()
+      await ensureDaemon()
+      const response = await sendCommand({ command: 'list-devices', args: {} })
+
+      if (!response.ok) {
+        process.stderr.write((response.error ?? 'Unknown error') + '\n')
+        process.exit(response.exitCode ?? 1)
+      }
+
+      const devices = response.result as DeviceInfo[]
 
       if (opts.json) {
         output(devices, opts)

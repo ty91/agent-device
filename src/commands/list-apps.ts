@@ -1,6 +1,7 @@
 import type { Command } from 'commander'
-import * as registry from '../platform/registry.js'
+import { ensureDaemon, sendCommand } from '../daemon/client.js'
 import { output } from '../util/output.js'
+import type { AppInfo } from '../platform/types.js'
 
 export function registerListAppsCommand(program: Command): void {
   program
@@ -9,15 +10,18 @@ export function registerListAppsCommand(program: Command): void {
     .option('--udid <id>', 'Device identifier')
     .action(async (cmdOpts: { udid?: string }) => {
       const opts = program.opts()
-      const udid = cmdOpts.udid ?? (await resolveDefaultUdid())
-      const { provider } = await registry.resolveDevice(udid)
+      await ensureDaemon()
+      const response = await sendCommand({
+        command: 'list-apps',
+        args: { udid: cmdOpts.udid },
+      })
 
-      if (!provider.listApps) {
-        console.error(`list-apps is not supported for platform "${provider.name}"`)
-        process.exit(1)
+      if (!response.ok) {
+        process.stderr.write((response.error ?? 'Unknown error') + '\n')
+        process.exit(response.exitCode ?? 1)
       }
 
-      const apps = await provider.listApps(udid)
+      const apps = response.result as AppInfo[]
 
       if (opts.json) {
         output(apps, opts)
@@ -36,15 +40,4 @@ export function registerListAppsCommand(program: Command): void {
         console.log(`  ${app.name} — ${app.bundleId}`)
       }
     })
-}
-
-async function resolveDefaultUdid(): Promise<string> {
-  const ctx = await registry.detectContext()
-  if (ctx.target === 'single') return ctx.devices[0].udid
-  if (ctx.target === 'none') {
-    console.error('No devices found.')
-    process.exit(1)
-  }
-  console.error('Multiple devices found. Use --udid to specify one.')
-  process.exit(1)
 }

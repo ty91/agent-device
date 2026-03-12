@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess, exec } from 'child_process'
 import { promisify } from 'util'
 import { createInterface } from 'readline'
-import { existsSync, mkdirSync } from 'fs'
+import { existsSync, mkdirSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { homedir } from 'os'
 import { log } from '../../util/logger.js'
@@ -91,6 +91,17 @@ export class WDAManager {
     const dir = join(homedir(), '.agent-device', 'wda-build')
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
     return dir
+  }
+
+  private hasBuildArtifacts(): boolean {
+    const productsDir = join(this.getDerivedDataPath(), 'Build', 'Products')
+    if (!existsSync(productsDir)) return false
+    try {
+      const files = readdirSync(productsDir)
+      return files.some(f => f.endsWith('.xctestrun'))
+    } catch {
+      return false
+    }
   }
 
   private async preTriggerCodesignDialog(teamId: string): Promise<void> {
@@ -220,6 +231,7 @@ export class WDAManager {
     onProgress?: ProgressCallback,
     port: number = 8100,
     teamId?: string,
+    forceBuild?: boolean,
   ): Promise<WDAClient> {
     const report = (step: WDASetupStep, message: string) => {
       log('WDAManager', 'log', `[${udid}] ${step}: ${message}`)
@@ -239,18 +251,22 @@ export class WDAManager {
       return client
     }
 
-    report('building_wda', 'Building WebDriverAgent (this takes 3-5 min on first run). Watch for macOS keychain dialog — click "Always Allow".')
-    let buildElapsed = 0
-    const heartbeat = setInterval(() => {
-      buildElapsed += 30
-      report('building_wda', `Still building... (${buildElapsed}s elapsed)`)
-    }, 30_000)
-    try {
-      await this.buildWDA(udid, teamId)
-    } finally {
-      clearInterval(heartbeat)
+    if (this.hasBuildArtifacts() && !forceBuild) {
+      report('building_wda', 'Build artifacts found, skipping build.')
+    } else {
+      report('building_wda', 'Building WebDriverAgent (this takes 3-5 min on first run). Watch for macOS keychain dialog — click "Always Allow".')
+      let buildElapsed = 0
+      const heartbeat = setInterval(() => {
+        buildElapsed += 30
+        report('building_wda', `Still building... (${buildElapsed}s elapsed)`)
+      }, 30_000)
+      try {
+        await this.buildWDA(udid, teamId)
+      } finally {
+        clearInterval(heartbeat)
+      }
+      report('building_wda', 'Build complete.')
     }
-    report('building_wda', 'Build complete.')
 
     report('installing_wda', 'Installing WebDriverAgent on device. Keep your iPhone unlocked.')
 

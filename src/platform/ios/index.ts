@@ -103,8 +103,8 @@ export class IosPlatformProvider implements PlatformProvider {
     return axClient.scan(region)
   }
 
-  async setupDevice(udid: string, onProgress?: (msg: string) => void, teamId?: string): Promise<void> {
-    await wdaManager.setupDevice(udid, onProgress ? (p) => onProgress(p.message) : undefined, 8100, teamId)
+  async setupDevice(udid: string, onProgress?: (msg: string) => void, teamId?: string, forceBuild?: boolean): Promise<void> {
+    await wdaManager.setupDevice(udid, onProgress ? (p) => onProgress(p.message) : undefined, 8100, teamId, forceBuild)
   }
 
   async listApps(udid: string): Promise<AppInfo[]> {

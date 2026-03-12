@@ -9,12 +9,13 @@ export function registerSetupDeviceCommand(program: Command): void {
     .description('Initialize a physical device (build/install WebDriverAgent for iOS)')
     .argument('<udid>', 'Device UDID')
     .option('--team-id <id>', 'Apple Development Team ID (auto-detected if omitted)')
-    .action(async (udid: string, cmdOpts: { teamId?: string }) => {
+    .option('--force-build', 'Force rebuild WebDriverAgent even if build artifacts exist')
+    .action(async (udid: string, cmdOpts: { teamId?: string; forceBuild?: boolean }) => {
       const opts = program.opts()
       await ensureDaemon()
 
       const response = await sendStreamingCommand(
-        { command: 'setup-device', args: { udid, teamId: cmdOpts.teamId } },
+        { command: 'setup-device', args: { udid, teamId: cmdOpts.teamId, forceBuild: cmdOpts.forceBuild } },
         (chunk: RpcStreamChunk) => {
           if (chunk.type === 'progress') {
             process.stderr.write(`  ${chunk.data}\n`)

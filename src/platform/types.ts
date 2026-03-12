@@ -61,7 +61,7 @@ export type PlatformProvider = {
   getClient(udid: string): Promise<DeviceClient>
   getScreenSize(udid: string): Promise<{ width: number; height: number }>
   scanUi?(udid: string, region: ScanRegion): Promise<unknown[]>
-  setupDevice?(udid: string, onProgress?: (msg: string) => void, teamId?: string): Promise<void>
+  setupDevice?(udid: string, onProgress?: (msg: string) => void, teamId?: string, forceBuild?: boolean): Promise<void>
   listApps?(udid: string): Promise<AppInfo[]>
   launchApp?(udid: string, bundleId: string): Promise<void>
 }

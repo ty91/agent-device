@@ -124,6 +124,42 @@ export class WDAClient {
     })
     this.sessionId = response.value?.sessionId ?? response.sessionId
     log('WDAClient', 'log', `WDA session created: ${this.sessionId}`)
+    this.startKeepAlive()
+  }
+
+  private keepAliveInterval: ReturnType<typeof setInterval> | null = null
+
+  private startKeepAlive(): void {
+    this.stopKeepAlive()
+    this.keepAliveInterval = setInterval(async () => {
+      try {
+        const locked = await this.isLocked()
+        if (locked) {
+          log('WDAClient', 'log', `[${this.udid}] Device locked, unlocking...`)
+          await this.unlock()
+        }
+      } catch {
+        // WDA not reachable — keep-alive will retry next interval
+      }
+    }, 30_000)
+  }
+
+  private stopKeepAlive(): void {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval)
+      this.keepAliveInterval = null
+    }
+  }
+
+  async isLocked(): Promise<boolean> {
+    const sessionId = await this.ensureSession()
+    const response = await this.request<{ value: boolean }>('GET', `/session/${sessionId}/wda/locked`)
+    return response.value
+  }
+
+  async unlock(): Promise<void> {
+    const sessionId = await this.ensureSession()
+    await this.request<unknown>('POST', `/session/${sessionId}/wda/unlock`)
   }
 
   async destroySession(): Promise<void> {
@@ -360,6 +396,7 @@ export class WDAClient {
   }
 
   async shutdown(): Promise<void> {
+    this.stopKeepAlive()
     await this.destroySession()
     WDAClient.removeInstance(this.udid, this.port)
     log('WDAClient', 'log', `[${this.udid}] Shutdown complete`)

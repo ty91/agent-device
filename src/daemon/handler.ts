@@ -387,7 +387,7 @@ async function handleSetupDevice(
 
   await provider.setupDevice(udid, (msg) => {
     onProgress({ type: 'progress', data: msg })
-  }, args.teamId as string | undefined)
+  }, args.teamId as string | undefined, args.forceBuild as boolean | undefined)
 
   let screenSize: { width: number; height: number } | null = null
   try {
